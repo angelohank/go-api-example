@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"net/http"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,19 +9,6 @@ import (
 
 func main() {
 	app := fiber.New()
-
-	app.Get("/user", func(c *fiber.Ctx) error {
-
-		var apiResponse map[string]string
-
-		res, err := http.Get("https://api.chucknorris.io/jokes/random")
-		if err != nil {
-			c.Status(fiber.StatusInternalServerError).SendString("Erro ao fazer requisicao")
-		}
-
-		json.NewDecoder(res.Body).Decode(&apiResponse)
-		return c.SendString(apiResponse["value"])
-	})
 
 	app.Post("/login", Login)
 
