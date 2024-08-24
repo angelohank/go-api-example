@@ -1,29 +1,56 @@
 package main
 
 import (
-    "encoding/json"
-	"fmt"
+	"encoding/json"
 	"net/http"
-	"github.com/gorilla/mux"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
-type User struct {
-	ID int
-	NAME string
-	EMAIL string
-}
-
-func GetUser(w http.ResponseWriter, r *http.Request) {
-	users := []User{}
-
-	w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(users)
-}
-
 func main() {
-	router := mux.NewRouter()
-	router.HandleFunc("/user", GetUser).Methods("GET")
+	app := fiber.New()
 
-    fmt.Println("Servidor rodando na porta 8000")
-    http.ListenAndServe(":8000", router)
+	app.Get("/user", func(c *fiber.Ctx) error {
+
+		var apiResponse map[string]string
+
+		res, err := http.Get("https://api.chucknorris.io/jokes/random")
+		if err != nil {
+			c.Status(fiber.StatusInternalServerError).SendString("Erro ao fazer requisicao")
+		}
+
+		json.NewDecoder(res.Body).Decode(&apiResponse)
+		return c.SendString(apiResponse["value"])
+	})
+
+	app.Post("/login", Login)
+
+	app.Listen(":3000")
+}
+
+func Login(c *fiber.Ctx) error {
+	user := c.FormValue("user")
+	pass := c.FormValue("password")
+
+	if user != "angelo" || pass != "123" {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+
+	claims := jwt.MapClaims{
+		"name":  "Angelo",
+		"admin": true,
+		"exp":   time.Now().Add(time.Hour * 72).Unix(), //definindo validade de 72 horas pro token
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	t, err := token.SignedString([]byte("secret-key"))
+
+	if err != nil {
+		c.SendStatus(fiber.StatusInternalServerError)
+	}
+
+	return c.JSON(fiber.Map{"token": t})
 }
